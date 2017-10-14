@@ -1,2 +1,2 @@
 #!/bin/bash
-echo ECS_CLUSTER=web-servers-cluster-tr >> /etc/ecs/ecs.config
+echo ECS_CLUSTER=web-servers-cluster >> /etc/ecs/ecs.config

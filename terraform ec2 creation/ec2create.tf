@@ -1,12 +1,3 @@
-variable "webServerInstanceType" {
-  description = "webServerInstanceType"
-  default = "t2.micro"
-}
-variable "webServerAMI" {
-  description = "webServerAMI"
-  default = "ami-0a85946e"
-}
-
 
 provider "aws" {
   access_key = "${var.access_key}"
@@ -83,13 +74,14 @@ resource "aws_security_group" "ssh_tr" {
   }
 }
 
-resource "aws_ecs_cluster" "cluster" {
-  name = "web-servers-cluster-tr"
+# ecs cluster
+resource "aws_ecs_cluster" "web-servers-cluster" {
+  name = "web-servers-cluster"
 }
 
-
-resource "aws_instance" "WS1_tr" {
-  tags { Name = "WS1-tr" }
+# 1st web server
+resource "aws_instance" "WS1" {
+  tags { Name = "${var.ec2Instance1Name}" }
   ami           = "${var.webServerAMI}"
   instance_type = "${var.webServerInstanceType}"
   availability_zone = "eu-west-2a"
@@ -98,9 +90,10 @@ resource "aws_instance" "WS1_tr" {
   iam_instance_profile = "ecsInstanceRole"
   user_data = "${file("joinClusterScript.txt")}"
 }
-  
-resource "aws_instance" "WS2_tr" {
-  tags { Name = "WS2-tr" }
+
+# 2nd web server
+resource "aws_instance" "WS2" {
+  tags { Name = "${var.ec2Instance2Name}" }
   ami           = "${var.webServerAMI}"
   instance_type = "${var.webServerInstanceType}"
   availability_zone = "eu-west-2b"
@@ -110,11 +103,9 @@ resource "aws_instance" "WS2_tr" {
   user_data = "${file("joinClusterScript.txt")}"
 }
   
-
-
 # load balancer
 resource "aws_elb" "theElb" {
-  name               = "elb-for-webservers-tr"
+  name               = "elb-for-webservers"
   availability_zones = ["eu-west-2a", "eu-west-2b"]
 
   listener {
@@ -140,16 +131,42 @@ resource "aws_elb" "theElb" {
     interval            = 30
   }
 
-  instances                   = ["${aws_instance.WS1_tr.id}","${aws_instance.WS2_tr.id}"]
+  instances                   = ["${aws_instance.WS1.id}",								"${aws_instance.WS2.id}"]
   cross_zone_load_balancing   = true
   idle_timeout                = 60
-
 
   security_groups = ["sg-527c633b"]
   
 }
 
+# service
+resource "aws_ecs_service" "cluster" {
+  name            = "${var.serviceName}"
+  cluster         = "${aws_ecs_cluster.web-servers-cluster.id}"
+  task_definition = "${var.taskDefinition}:85"
+  desired_count   = 2
+  iam_role        = "ecsServiceRole"
+ 
+ placement_strategy {
+    type  = "spread"
+    field = "instanceId"
+  }
 
+  placement_strategy {
+    type  = "spread"
+    field = "attribute:ecs.availability-zone"
+  }
+
+  load_balancer {
+    elb_name       = "${aws_elb.theElb.name}"
+    container_name = "container1"
+    container_port = 80
+  }
+
+
+  deployment_maximum_percent = "100"
+  deployment_minimum_healthy_percent = "30"
+}
 
 
 

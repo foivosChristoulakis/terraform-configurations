@@ -89,6 +89,7 @@ resource "aws_instance" "WS1" {
   security_groups = ["ssh","webserver"]
   iam_instance_profile = "ecsInstanceRole"
   user_data = "${file("joinClusterScript.txt")}"
+  key_name="KP2"
 }
 
 # 2nd web server
@@ -101,6 +102,7 @@ resource "aws_instance" "WS2" {
   security_groups = ["ssh","webserver"]
   iam_instance_profile = "ecsInstanceRole"  
   user_data = "${file("joinClusterScript.txt")}"
+  key_name="KP2"
 }
   
 # load balancer

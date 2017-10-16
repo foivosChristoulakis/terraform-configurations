@@ -27,3 +27,8 @@ variable "taskDefinition" {
   description = "task definition"
   default = "deploysimpleserver"
 }
+
+variable "KeyPairName" {
+  description = "KeyPairName"
+  default = "KP2"
+}

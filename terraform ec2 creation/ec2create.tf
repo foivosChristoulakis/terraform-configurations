@@ -5,6 +5,10 @@ provider "aws" {
   region     = "${var.region}"
 }
 
+data "aws_ecs_task_definition" "latestTaskDefinition"{
+	 task_definition = "${var.taskDefinition}"
+}
+#-------------------------------------
 
 resource "aws_security_group" "webserver_tr" {
   name        = "webserver_tr"
@@ -89,7 +93,7 @@ resource "aws_instance" "WS1" {
   security_groups = ["ssh","webserver"]
   iam_instance_profile = "ecsInstanceRole"
   user_data = "${file("joinClusterScript.txt")}"
-  key_name="KP2"
+  key_name="${var.KeyPairName}"
 }
 
 # 2nd web server
@@ -102,7 +106,7 @@ resource "aws_instance" "WS2" {
   security_groups = ["ssh","webserver"]
   iam_instance_profile = "ecsInstanceRole"  
   user_data = "${file("joinClusterScript.txt")}"
-  key_name="KP2"
+  key_name="${var.KeyPairName}"
 }
   
 # load balancer
@@ -133,7 +137,7 @@ resource "aws_elb" "theElb" {
     interval            = 30
   }
 
-  instances                   = ["${aws_instance.WS1.id}",								"${aws_instance.WS2.id}"]
+  instances                   = ["${aws_instance.WS1.id}",													"${aws_instance.WS2.id}"]
   cross_zone_load_balancing   = true
   idle_timeout                = 60
 
@@ -145,7 +149,7 @@ resource "aws_elb" "theElb" {
 resource "aws_ecs_service" "cluster" {
   name            = "${var.serviceName}"
   cluster         = "${aws_ecs_cluster.web-servers-cluster.id}"
-  task_definition = "${var.taskDefinition}:85"
+  task_definition = "${var.taskDefinition}:${data.aws_ecs_task_definition.latestTaskDefinition.revision}"
   desired_count   = 2
   iam_role        = "ecsServiceRole"
  
@@ -171,10 +175,15 @@ resource "aws_ecs_service" "cluster" {
 }
 
 
+# OUTPUTS -------------------------------------------------
 
+output "elb_dns_name"{
+	value = "${aws_elb.theElb.dns_name}"
+}
 
-
-
+output "task_latest_rev"{
+	value = "${data.aws_ecs_task_definition.latestTaskDefinition.revision}"
+}
 
 
 
